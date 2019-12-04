@@ -1,11 +1,14 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<GL/glut.h>
+#include <stdbool.h>
 #include<math.h>
 
 void static on_display(void);
 void static on_keyboard(unsigned char key, int x, int y);
 void static on_reshape(int width, int height);
+
+void static trava();
 void static puc();
 void static ruka();
 void static meda();
@@ -16,12 +19,13 @@ static float matrix[16];
 static void on_motion(int x, int y);
 static int window_width, window_height;
 static float pitch = 0, yaw = 0;
+static float pomCam[] = {0,0};
 
 static float cameraPos[3]   = {0.0f, 0.0f,  3.0f};
 static float cameraFront[3] = {0.0f, 0.0f, -1.0f};
 static float cameraUp[3] = {0.0f, 1.0f,  0.0f};
 
-static float lastX, lastY;
+static float lastX = 0, lastY = 0;
 
 
 void static SpecialInput(int key, int x, int y);
@@ -46,7 +50,7 @@ int main(int argc, char** argv){
     pom[1] = 0;
     
     
-    glutMotionFunc(on_motion);
+    glutPassiveMotionFunc(on_motion);
     glutSpecialFunc(SpecialInput);
     glutKeyboardFunc(on_keyboard);
     glutReshapeFunc(on_reshape);
@@ -106,6 +110,8 @@ static void on_timer(int value)
 {
     if (value != 0)
         return;
+    
+    
 
     animation_parameter++;
 
@@ -128,31 +134,11 @@ static void on_reshape(int width, int height)
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(60, (float) width / height, 1, 100);
+    gluPerspective(60, (float) width / height, 1, 1000);
 }
 
 static void on_motion(int x, int y)
-{/*
-    int delta_x, delta_y;
-
-    delta_x = x - mouse_x;
-    delta_y = y - mouse_y;
-
-    mouse_x = x;
-    mouse_y = y;
-
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-        glLoadIdentity();
-        glRotatef(180 * (float) delta_x / window_width, 0, 1, 0);
-        glRotatef(180 * (float) delta_y / window_height, 1, 0, 0);
-        glMultMatrixf(matrix);
-
-        glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
-    glPopMatrix();
-    
-void mouse_callback(GLFWwindow* window, double xpos, double ypos)
- */ 
+{
     float xoffset = x - lastX;
     float yoffset = lastY - y; 
     lastX = x;
@@ -171,9 +157,23 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
         pitch = -89.0f;
 
     cameraFront[0] = cos(yaw) * cos(pitch);
-    cameraFront[1] = sin(pitch);
+    /*cameraFront[1] = sin(pitch);*/
     cameraFront[2] = sin(yaw) * cos(pitch);
     
+    
+    pomCam[1] =  cos(yaw) * cos(pitch);
+    pomCam[0] = sin(yaw) * cos(pitch);
+    /*
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+        glLoadIdentity();
+        glRotatef(180 * (float) xoffset / window_width, 0, 1, 0);
+        glRotatef(180 * (float) yoffset / window_height, 1, 0, 0);
+        glMultMatrixf(matrix);
+
+        glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
+    glPopMatrix();
+    */
     glutPostRedisplay();
 }
 
@@ -201,16 +201,16 @@ void static on_display(void){
     glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
 
    
-
+   
     ruka();
     puc();
-    glMultMatrixf(matrix);
     
-    glTranslatef(-pom[1],0, -pom[0]);
+    glTranslatef(0, 0, -20);
+    glTranslatef(pomCam[1]-pom[1],0, -pom[0]);
     gluLookAt(cameraPos[0] + pom[1], cameraPos[1], cameraPos[2] + pom[0], cameraPos[0] + cameraFront[0] + pom[1], cameraPos[1]  + cameraFront[1], cameraPos[2] + cameraFront[2] + pom[0], cameraUp[0], cameraUp[1], cameraUp[2]);
-    
     meda();
     drvo();
+    trava();
     glutSwapBuffers();
 }
 
@@ -315,6 +315,14 @@ void static ruka(){
     saka();
     podlaktica();
 }
+void static trava(){
+    glPushMatrix();
+        glTranslatef(0, -9, 0);
+        glColor3f(0, 0.3, 0.1);
+        glScalef(10000,0.01,10000);
+        glutSolidCube(1);
+    glPopMatrix();
+}
 
 void static meda(){
     GLfloat ambient_coeffs[] = { 0.6, 0.4, 0.4, 1 };
@@ -330,45 +338,61 @@ void static meda(){
     glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
     glMaterialf(GL_FRONT, GL_SHININESS, shininess);
     glPushMatrix();
-    glScalef(8, 8, 8);
-    glPushMatrix();
-        glScalef(1, 1.3, 1);
-        glutSolidSphere(0.15, 20, 20);
-    glPopMatrix();
-    glPushMatrix();
-        glTranslatef(0, 0.25, 0);
-        glutSolidSphere(0.1, 20, 20);
-    glPopMatrix();
-    glPushMatrix();
-        glTranslatef(0.06, 0.34, 0);
-        glutSolidSphere(0.03, 20, 20);
-    glPopMatrix();
-    glPushMatrix();
-        glTranslatef(-0.06, 0.34, 0);
-        glutSolidSphere(0.03, 20, 20);
-    glPopMatrix();
-    glPushMatrix();
-        glTranslatef(-0.06, -0.2, 0);
-        glScalef(1, 2, 1);
-        glutSolidSphere(0.05, 20, 20);
-    glPopMatrix();
-    
-    glPushMatrix();
-        glTranslatef(0.06, -0.2, 0);
-        glScalef(1, 2, 1);
-        glutSolidSphere(0.05, 20, 20);
-    glPopMatrix();
-    glPushMatrix();
-            glTranslatef(0.15, 0.01, 0);
-            glScalef(1, 2, 1);
-            glutSolidSphere(0.05, 20, 20);
-        glPopMatrix();
-        
+        glTranslatef(0,0,animation_parameter*0.03);
+        glScalef(30, 30, 30);
         glPushMatrix();
-            glTranslatef(-0.15, 0.01, 0);
+            glScalef(1, 1.3, 1);
+            glutSolidSphere(0.15, 20, 20);
+        glPopMatrix();
+        glPushMatrix();
+            glTranslatef(0, 0.25, 0);
+            glutSolidSphere(0.1, 20, 20);
+        glPopMatrix();
+        glPushMatrix();
+            glTranslatef(0.06, 0.34, 0);
+            glutSolidSphere(0.03, 20, 20);
+        glPopMatrix();
+        glPushMatrix();
+            glTranslatef(-0.06, 0.34, 0);
+            glutSolidSphere(0.03, 20, 20);
+        glPopMatrix();
+        glPushMatrix();
+            glTranslatef(-0.06, -0.2, 0);
+            glRotatef(
+            sin(animation_parameter / 50.0f) * 30.0f,
+            1, 0, 0
+            );
             glScalef(1, 2, 1);
             glutSolidSphere(0.05, 20, 20);
         glPopMatrix();
+        glPushMatrix();
+            glTranslatef(0.06, -0.2, 0);
+            glRotatef(
+            -sin(animation_parameter / 50.0f) * 30.0f,
+            1, 0, 0
+            );
+            glScalef(1, 2, 1);
+            glutSolidSphere(0.05, 20, 20);
+        glPopMatrix();
+        glPushMatrix();
+                glTranslatef(0.15, 0.01, 0);
+                glRotatef(
+                sin(animation_parameter / 50.0f) * 30.0f,
+                1, 0, 0
+                );
+                glScalef(1, 2, 1);
+                glutSolidSphere(0.05, 20, 20);
+            glPopMatrix();
+            
+            glPushMatrix();
+                glTranslatef(-0.15, 0.01, 0);
+                glRotatef(
+                -sin(animation_parameter / 50.0f) * 30.0f,
+                1, 0, 0
+                );
+                glScalef(1, 2, 1);
+                glutSolidSphere(0.05, 20, 20);
+            glPopMatrix();
     glPopMatrix();
 }
 
@@ -428,6 +452,7 @@ void krosnja(){
 }
 void static drvo(){
     glPushMatrix();
+        glTranslatef(0,5, 0);
         glScalef(15, 15, 15);
         stablo();
         krosnja();
