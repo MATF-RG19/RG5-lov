@@ -3,8 +3,10 @@
 #include<GL/glut.h>
 #include <stdbool.h>
 #include<math.h>
+#include <time.h>
 
 #define GUSTINA 100
+#define M_PI acos(-1.0)
 
 void static on_display(void);
 void static on_keyboard(unsigned char key, int x, int y);
@@ -16,21 +18,23 @@ static float Z[100];
 
 static float xMeda = 1;
 static float yMeda = 1;
-static float xMedaPom = 0;
-static float yMedaPom = 0;
+static float xMedaPom = 1;
+static float yMedaPom = 1;
 
 void static trava();
 void static puc();
 void static ruka();
 void static meda();
 void static drvo();
-float static pom[2];
+float static pom[] = {0, 0};
 static float animation_parameter;
 static float matrix[16];
 static void on_motion(int x, int y);
 static int window_width, window_height;
 static float pitch = 0, yaw = 0;
 static float pomCam[] = {0,0};
+
+static time_t start;
 
 static float cameraPos[3]   = {0.0f, 0.0f,  3.0f};
 static float cameraFront[3] = {0.0f, 0.0f, -1.0f};
@@ -76,6 +80,8 @@ int main(int argc, char** argv){
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
     
+    start = time(NULL);
+    srand(time(NULL));
     
     glutInitWindowSize(800, 800);
     glutInitWindowPosition(100, 100);
@@ -159,8 +165,28 @@ static void on_timer(int value)
     animation_parameter++;
     xMeda += xMedaPom;
     yMeda += yMedaPom;
-
-    generateMedaVec();
+    if(xMeda >= 500 && yMeda >= 500){
+        xMedaPom = -1;
+        yMedaPom = -1;
+    }
+    if(xMeda >= 500 && yMeda <= -500){
+        xMedaPom = -1;
+        yMedaPom = 1;
+    }
+    if(xMeda <= -500 && yMeda >= 500){
+        xMedaPom = 1;
+        yMedaPom = -1;
+    }
+    if(xMeda <= -500 && yMeda <= -500){
+        xMedaPom = 1;
+        yMedaPom = 1;
+    }
+    time_t t1 = time(NULL);
+    if(t1-start >= 5){
+        start = t1;
+        generateMedaVec();
+    }
+    
     
     glutPostRedisplay();
 
@@ -224,7 +250,7 @@ static void on_motion(int x, int y)
 }
 
 void static on_display(void){
-    GLfloat light_position[] = { 1, 1, 1, 0 };
+    GLfloat light_position[] = { 100, 100, 100, 0 };
     GLfloat light_ambient[] = { 0.0, 0.0, 0.0, 1 };
     GLfloat light_diffuse[] = { 0.5, 0.5, 0.5, 1 };
     GLfloat light_specular[] = { 0.6, 0.6, 0.6, 1 };
@@ -247,16 +273,14 @@ void static on_display(void){
     glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
 
    
-
     ruka();
     puc();
     
-    glTranslatef(0, 0, -20);
-    glTranslatef(-pom[1],0, -pom[0]);
-    gluLookAt(cameraPos[0] + pom[1], cameraPos[1], cameraPos[2] + pom[0], cameraPos[0]+ pom[1], cameraPos[1]  + cameraFront[1], cameraPos[2] + cameraFront[2] + pom[0], cameraUp[0], cameraUp[1], cameraUp[2]);
     
+    gluLookAt(cameraPos[0] + pom[1], cameraPos[1], cameraPos[2] + pom[0], cameraPos[0]+ pom[1], cameraPos[1]  + cameraFront[1], cameraPos[2] + cameraFront[2] + pom[0], cameraUp[0], cameraUp[1], cameraUp[2]);
+    /*(0,0,-1)*/
     glPushMatrix();
-        glTranslatef(xMeda*0.1 , 0, yMeda*0.1);
+        glTranslatef(xMeda*0.2 , 0, yMeda*0.2);
         meda();
     glPopMatrix();
     forest();
@@ -401,6 +425,8 @@ void static meda(){
     glMaterialf(GL_FRONT, GL_SHININESS, shininess);
     glPushMatrix();
         glScalef(30, 30, 30);
+        float angle = acos((-yMedaPom)/sqrt(xMedaPom*xMedaPom + yMedaPom*yMedaPom));
+        glRotatef(angle*180/M_PI, 0, 1, 0);
         glPushMatrix();
             glScalef(1, 1.3, 1);
             glutSolidSphere(0.15, 20, 20);
