@@ -4,9 +4,20 @@
 #include <stdbool.h>
 #include<math.h>
 
+#define GUSTINA 100
+
 void static on_display(void);
 void static on_keyboard(unsigned char key, int x, int y);
 void static on_reshape(int width, int height);
+
+static float x, z;
+static float X[100];
+static float Z[100];
+
+static float xMeda = 1;
+static float yMeda = 1;
+static float xMedaPom = 0;
+static float yMedaPom = 0;
 
 void static trava();
 void static puc();
@@ -35,6 +46,32 @@ static int mouse_x, mouse_y;
 
 static void on_timer(int value);
 
+void hundred(){
+    
+    int i = 0;
+    for (i = 0; i < GUSTINA; i++){
+        x = rand() % (500 + 500 + 1) - 500;
+        z = rand() % (500 + 500 + 1) - 500;
+        X[i] = x;
+        Z[i] = z;
+    }
+}
+
+void forest(){
+    int i =0;
+    for(i = 0; i < GUSTINA; i++){
+        glPushMatrix();
+            glTranslatef(X[i], 0, Z[i]);
+            drvo();
+        glPopMatrix();
+    }
+}
+
+void generateMedaVec(){
+    xMedaPom = (float)rand()/((float)RAND_MAX)*4 - 2;
+    yMedaPom =  (float)rand()/((float)RAND_MAX)*4 - 2;
+}
+
 int main(int argc, char** argv){
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
@@ -57,6 +94,7 @@ int main(int argc, char** argv){
     glutDisplayFunc(on_display);
     
     glEnable(GL_DEPTH_TEST);
+    glutSetCursor(GLUT_CURSOR_NONE);
     
     glClearColor(0.75, 0.75, 0.75, 0);
     
@@ -64,10 +102,15 @@ int main(int argc, char** argv){
     glLoadIdentity();
     glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
     
+    hundred();
+    
     glutMainLoop();
     
     return 0;
 }
+
+
+
 
 void static on_keyboard(unsigned char key, int x, int y){
     switch(key){
@@ -114,7 +157,11 @@ static void on_timer(int value)
     
 
     animation_parameter++;
+    xMeda += xMedaPom;
+    yMeda += yMedaPom;
 
+    generateMedaVec();
+    
     glutPostRedisplay();
 
     if (animation_active)
@@ -170,7 +217,6 @@ static void on_motion(int x, int y)
         glRotatef(180 * (float) xoffset / window_width, 0, 1, 0);
         glRotatef(180 * (float) yoffset / window_height, 1, 0, 0);
         glMultMatrixf(matrix);
-
         glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
     glPopMatrix();
     */
@@ -201,15 +247,19 @@ void static on_display(void){
     glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
 
    
-   
+
     ruka();
     puc();
     
     glTranslatef(0, 0, -20);
-    glTranslatef(pomCam[1]-pom[1],0, -pom[0]);
-    gluLookAt(cameraPos[0] + pom[1], cameraPos[1], cameraPos[2] + pom[0], cameraPos[0] + cameraFront[0] + pom[1], cameraPos[1]  + cameraFront[1], cameraPos[2] + cameraFront[2] + pom[0], cameraUp[0], cameraUp[1], cameraUp[2]);
-    meda();
-    drvo();
+    glTranslatef(-pom[1],0, -pom[0]);
+    gluLookAt(cameraPos[0] + pom[1], cameraPos[1], cameraPos[2] + pom[0], cameraPos[0]+ pom[1], cameraPos[1]  + cameraFront[1], cameraPos[2] + cameraFront[2] + pom[0], cameraUp[0], cameraUp[1], cameraUp[2]);
+    
+    glPushMatrix();
+        glTranslatef(xMeda*0.1 , 0, yMeda*0.1);
+        meda();
+    glPopMatrix();
+    forest();
     trava();
     glutSwapBuffers();
 }
@@ -316,10 +366,22 @@ void static ruka(){
     podlaktica();
 }
 void static trava(){
+    GLfloat ambient_coeffs[] = { 0, 0.1, 0, 1 };
+
+    GLfloat diffuse_coeffs[] = { 0, 0.1, 0, 1 };
+
+    GLfloat specular_coeffs[] = {0, 0.9, 0.11, 1 };
+
+    GLfloat shininess = 0;
+    
+    glMaterialfv(GL_FRONT, GL_AMBIENT, ambient_coeffs);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse_coeffs);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
+    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
     glPushMatrix();
         glTranslatef(0, -9, 0);
-        glColor3f(0, 0.3, 0.1);
         glScalef(10000,0.01,10000);
+        glColor3f(0,1,0);
         glutSolidCube(1);
     glPopMatrix();
 }
@@ -338,7 +400,6 @@ void static meda(){
     glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
     glMaterialf(GL_FRONT, GL_SHININESS, shininess);
     glPushMatrix();
-        glTranslatef(0,0,animation_parameter*0.03);
         glScalef(30, 30, 30);
         glPushMatrix();
             glScalef(1, 1.3, 1);
@@ -359,7 +420,7 @@ void static meda(){
         glPushMatrix();
             glTranslatef(-0.06, -0.2, 0);
             glRotatef(
-            sin(animation_parameter / 50.0f) * 30.0f,
+            sin(animation_parameter / 10.0f) * 30.0f,
             1, 0, 0
             );
             glScalef(1, 2, 1);
@@ -368,28 +429,30 @@ void static meda(){
         glPushMatrix();
             glTranslatef(0.06, -0.2, 0);
             glRotatef(
-            -sin(animation_parameter / 50.0f) * 30.0f,
+            -sin(animation_parameter / 10.0f) * 30.0f,
             1, 0, 0
             );
             glScalef(1, 2, 1);
             glutSolidSphere(0.05, 20, 20);
         glPopMatrix();
         glPushMatrix();
-                glTranslatef(0.15, 0.01, 0);
+                glTranslatef(0.15, 0.11, 0);
                 glRotatef(
-                sin(animation_parameter / 50.0f) * 30.0f,
+                sin(animation_parameter/10.0f) * 30.0f,
                 1, 0, 0
                 );
+                glTranslatef(0, -0.1, 0);
                 glScalef(1, 2, 1);
                 glutSolidSphere(0.05, 20, 20);
             glPopMatrix();
             
             glPushMatrix();
-                glTranslatef(-0.15, 0.01, 0);
+                glTranslatef(-0.15, 0.11, 0);
                 glRotatef(
-                -sin(animation_parameter / 50.0f) * 30.0f,
+                -sin(animation_parameter/10.0f) * 30.0f,
                 1, 0, 0
                 );
+                glTranslatef(0, -0.1, 0);
                 glScalef(1, 2, 1);
                 glutSolidSphere(0.05, 20, 20);
             glPopMatrix();
@@ -452,7 +515,7 @@ void krosnja(){
 }
 void static drvo(){
     glPushMatrix();
-        glTranslatef(0,5, 0);
+        glTranslatef(0,3, 0);
         glScalef(15, 15, 15);
         stablo();
         krosnja();
