@@ -32,7 +32,6 @@ static float matrix[16];
 static void on_motion(int x, int y);
 static int window_width, window_height;
 static float pitch = 0, yaw = 0;
-static float pomCam[] = {0,0};
 
 static time_t start;
 
@@ -217,7 +216,7 @@ static void on_motion(int x, int y)
     lastX = x;
     lastY = y;
 
-    float sensitivity = 0.0055;
+    float sensitivity = 0.3;
     xoffset *= sensitivity;
     yoffset *= sensitivity;
 
@@ -229,13 +228,11 @@ static void on_motion(int x, int y)
     if(pitch < -89.0f)
         pitch = -89.0f;
 
-    cameraFront[0] = cos(yaw) * cos(pitch);
+    cameraFront[0] = cos(yaw*M_PI/180) * cos(pitch*M_PI/180);
     /*cameraFront[1] = sin(pitch);*/
-    cameraFront[2] = sin(yaw) * cos(pitch);
+    cameraFront[2] = sin(yaw*M_PI/180) * cos(pitch*M_PI/180);
     
     
-    pomCam[1] =  cos(yaw) * cos(pitch);
-    pomCam[0] = sin(yaw) * cos(pitch);
     /*
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
@@ -251,9 +248,9 @@ static void on_motion(int x, int y)
 
 void static on_display(void){
     GLfloat light_position[] = { 100, 100, 100, 0 };
-    GLfloat light_ambient[] = { 0.0, 0.0, 0.0, 1 };
-    GLfloat light_diffuse[] = { 0.5, 0.5, 0.5, 1 };
-    GLfloat light_specular[] = { 0.6, 0.6, 0.6, 1 };
+    GLfloat light_ambient[] = { 0.1, 0.1, 0.1, 1 };
+    GLfloat light_diffuse[] = { 0.6, 0.6, 0.6, 1 };
+    GLfloat light_specular[] = { 0.8, 0.8, 0.8, 1 };
     
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -263,7 +260,7 @@ void static on_display(void){
     
     
     
-    gluLookAt(cameraPos[0], cameraPos[1], cameraPos[2], cameraPos[0] + cameraFront[0], cameraPos[1]  + cameraFront[1], cameraPos[2] + cameraFront[2], cameraUp[0], cameraUp[1], cameraUp[2]);
+    
 
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
@@ -273,17 +270,29 @@ void static on_display(void){
     glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
 
    
-    ruka();
-    puc();
+    gluLookAt(cameraPos[0]+ pom[1], cameraPos[1], cameraPos[2]+ pom[0], cameraPos[0] + cameraFront[0]+ pom[1], cameraPos[1]  + cameraFront[1], cameraPos[2] + cameraFront[2]+ pom[0], cameraUp[0], cameraUp[1], cameraUp[2]);
+    /*cameraFront[0], 0, cameraFront[2]
+     * 0, 0, 1*/
+    glPushMatrix();
+        glTranslatef(pom[1] + cameraFront[0], 0, pom[0] + cameraFront[2]);
+        glTranslatef(0, 0, 4);
+        float angl = acos(-cameraFront[2]/sqrt(cameraFront[2]*cameraFront[2] + cameraFront[0]*cameraFront[0]));
+        if(cameraFront[0] < 0)
+            glRotatef(angl*180/M_PI, 0, 1, 0);
+        else
+            glRotatef(360 - angl*180/M_PI, 0, 1, 0);
+        glTranslatef(0,0, -4);
+        ruka();
+        puc();
+    glPopMatrix();
     
     
-    gluLookAt(cameraPos[0] + pom[1], cameraPos[1], cameraPos[2] + pom[0], cameraPos[0]+ pom[1], cameraPos[1]  + cameraFront[1], cameraPos[2] + cameraFront[2] + pom[0], cameraUp[0], cameraUp[1], cameraUp[2]);
-    /*(0,0,-1)*/
+    /*
     glPushMatrix();
         glTranslatef(xMeda*0.2 , 0, yMeda*0.2);
         meda();
     glPopMatrix();
-    forest();
+    */forest();
     trava();
     glutSwapBuffers();
 }
@@ -394,7 +403,7 @@ void static trava(){
 
     GLfloat diffuse_coeffs[] = { 0, 0.1, 0, 1 };
 
-    GLfloat specular_coeffs[] = {0, 0.9, 0.11, 1 };
+    GLfloat specular_coeffs[] = {0, 0.3, 0.11, 1 };
 
     GLfloat shininess = 0;
     
@@ -405,7 +414,6 @@ void static trava(){
     glPushMatrix();
         glTranslatef(0, -9, 0);
         glScalef(10000,0.01,10000);
-        glColor3f(0,1,0);
         glutSolidCube(1);
     glPopMatrix();
 }
