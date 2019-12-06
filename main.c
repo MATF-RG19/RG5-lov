@@ -45,7 +45,6 @@ static float lastX = 0, lastY = 0;
 void static SpecialInput(int key, int x, int y);
 
 static int animation_active;
-static int mouse_x, mouse_y;
 
 static void on_timer(int value);
 
@@ -53,8 +52,8 @@ void hundred(){
     
     int i = 0;
     for (i = 0; i < GUSTINA; i++){
-        x = rand() % (500 + 500 + 1) - 500;
-        z = rand() % (500 + 500 + 1) - 500;
+        x = rand() % (300 + 300 + 1) - 300;
+        z = rand() % (300 + 300 + 1) - 300;
         X[i] = x;
         Z[i] = z;
     }
@@ -134,19 +133,27 @@ void static on_keyboard(unsigned char key, int x, int y){
 
 void SpecialInput(int key, int x, int y)
 {
+    float normalized[2];
+    float sum = sqrt(cameraFront[0]* cameraFront[0] + cameraFront[2]*cameraFront[2]);
+    normalized[0] = cameraFront[0]/sum;
+    normalized[1] = cameraFront[2]/sum;
     switch(key)
     {
         case GLUT_KEY_UP:
-            pom[0]-=0.5;
+            pom[0]+=0.5*normalized[1];
+            pom[1]+=0.5*normalized[0];
         break;
         case GLUT_KEY_DOWN:
-            pom[0]+=0.5;
+            pom[0]-=0.5*normalized[1];
+            pom[1]-=0.5*normalized[0];
         break;
         case GLUT_KEY_LEFT:
-            pom[1]-=0.5;
+            pom[0]-=0.5*normalized[0];
+            pom[1]+=0.5*normalized[1];
         break;
         case GLUT_KEY_RIGHT:
-            pom[1]+=0.5;
+            pom[0]+=0.5*normalized[0];
+            pom[1]-=0.5*normalized[1];
         break;
     }
 
@@ -181,7 +188,7 @@ static void on_timer(int value)
         yMedaPom = 1;
     }
     time_t t1 = time(NULL);
-    if(t1-start >= 5){
+    if(t1-start >= 10){
         start = t1;
         generateMedaVec();
     }
@@ -229,20 +236,9 @@ static void on_motion(int x, int y)
         pitch = -89.0f;
 
     cameraFront[0] = cos(yaw*M_PI/180) * cos(pitch*M_PI/180);
-    /*cameraFront[1] = sin(pitch);*/
     cameraFront[2] = sin(yaw*M_PI/180) * cos(pitch*M_PI/180);
     
     
-    /*
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-        glLoadIdentity();
-        glRotatef(180 * (float) xoffset / window_width, 0, 1, 0);
-        glRotatef(180 * (float) yoffset / window_height, 1, 0, 0);
-        glMultMatrixf(matrix);
-        glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
-    glPopMatrix();
-    */
     glutPostRedisplay();
 }
 
@@ -271,8 +267,7 @@ void static on_display(void){
 
    
     gluLookAt(cameraPos[0]+ pom[1], cameraPos[1], cameraPos[2]+ pom[0], cameraPos[0] + cameraFront[0]+ pom[1], cameraPos[1]  + cameraFront[1], cameraPos[2] + cameraFront[2]+ pom[0], cameraUp[0], cameraUp[1], cameraUp[2]);
-    /*cameraFront[0], 0, cameraFront[2]
-     * 0, 0, 1*/
+
     glPushMatrix();
         glTranslatef(pom[1] + cameraFront[0], 0, pom[0] + cameraFront[2]);
         glTranslatef(0, 0, 4);
@@ -287,12 +282,17 @@ void static on_display(void){
     glPopMatrix();
     
     
-    /*
+    
     glPushMatrix();
         glTranslatef(xMeda*0.2 , 0, yMeda*0.2);
+        float angle = acos((-yMedaPom)/sqrt(xMedaPom*xMedaPom + yMedaPom*yMedaPom));
+        if(xMedaPom < 0)
+            glRotatef(angle*180/M_PI, 0, 1, 0);
+        else 
+            glRotatef(360 - angle*180/M_PI, 0, 1, 0);
         meda();
     glPopMatrix();
-    */forest();
+    forest();
     trava();
     glutSwapBuffers();
 }
@@ -433,8 +433,6 @@ void static meda(){
     glMaterialf(GL_FRONT, GL_SHININESS, shininess);
     glPushMatrix();
         glScalef(30, 30, 30);
-        float angle = acos((-yMedaPom)/sqrt(xMedaPom*xMedaPom + yMedaPom*yMedaPom));
-        glRotatef(angle*180/M_PI, 0, 1, 0);
         glPushMatrix();
             glScalef(1, 1.3, 1);
             glutSolidSphere(0.15, 20, 20);
