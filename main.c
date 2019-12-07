@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include<math.h>
 #include <time.h>
+#include "image.h"
 
 #define GUSTINA 100
 #define M_PI acos(-1.0)
@@ -12,6 +13,8 @@ void static on_display(void);
 void static on_keyboard(unsigned char key, int x, int y);
 void static on_reshape(int width, int height);
 
+
+static GLuint name;
 static float x, z;
 static float X[100];
 static float Z[100];
@@ -75,11 +78,39 @@ void generateMedaVec(){
 }
 
 int main(int argc, char** argv){
+    
+    Image * image;
+    
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
     
     start = time(NULL);
     srand(time(NULL));
+    
+    glEnable(GL_TEXTURE_2D);
+
+    glTexEnvf(GL_TEXTURE_ENV,
+              GL_TEXTURE_ENV_MODE,
+              GL_REPLACE);
+
+    image = image_init(0, 0);
+
+    image_read(image, "grass.bmp");
+
+    glGenTextures(1, &name);
+
+    glBindTexture(GL_TEXTURE_2D, name);
+    glTexParameteri(GL_TEXTURE_2D,
+                    GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D,
+                    GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D,
+                    GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,
+                    GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
+                 image->width, image->height, 0,
+                 GL_RGB, GL_UNSIGNED_BYTE, image->pixels);
     
     glutInitWindowSize(800, 800);
     glutInitWindowPosition(100, 100);
@@ -236,6 +267,7 @@ static void on_motion(int x, int y)
         pitch = -89.0f;
 
     cameraFront[0] = cos(yaw*M_PI/180) * cos(pitch*M_PI/180);
+    cameraFront[1] = sin(pitch*M_PI/180);
     cameraFront[2] = sin(yaw*M_PI/180) * cos(pitch*M_PI/180);
     
     
@@ -267,16 +299,19 @@ void static on_display(void){
 
    
     gluLookAt(cameraPos[0]+ pom[1], cameraPos[1], cameraPos[2]+ pom[0], cameraPos[0] + cameraFront[0]+ pom[1], cameraPos[1]  + cameraFront[1], cameraPos[2] + cameraFront[2]+ pom[0], cameraUp[0], cameraUp[1], cameraUp[2]);
+    
+    float t1=1.5*cameraFront[0];
+    float t2=1.5*cameraFront[2];
 
     glPushMatrix();
-        glTranslatef(pom[1] + cameraFront[0], 0, pom[0] + cameraFront[2]);
-        glTranslatef(0, 0, 4);
+        glTranslatef(t1, 0, t2);
+        glTranslatef(cameraPos[0] + cameraFront[0]+ pom[1], 0, cameraPos[2] + cameraFront[2]+ pom[0] );
         float angl = acos(-cameraFront[2]/sqrt(cameraFront[2]*cameraFront[2] + cameraFront[0]*cameraFront[0]));
         if(cameraFront[0] < 0)
             glRotatef(angl*180/M_PI, 0, 1, 0);
         else
             glRotatef(360 - angl*180/M_PI, 0, 1, 0);
-        glTranslatef(0,0, -4);
+        glTranslatef(-1,0, -1);
         ruka();
         puc();
     glPopMatrix();
@@ -399,22 +434,30 @@ void static ruka(){
     podlaktica();
 }
 void static trava(){
-    GLfloat ambient_coeffs[] = { 0, 0.1, 0, 1 };
 
-    GLfloat diffuse_coeffs[] = { 0, 0.1, 0, 1 };
-
-    GLfloat specular_coeffs[] = {0, 0.3, 0.11, 1 };
-
-    GLfloat shininess = 0;
-    
-    glMaterialfv(GL_FRONT, GL_AMBIENT, ambient_coeffs);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse_coeffs);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
-    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
     glPushMatrix();
         glTranslatef(0, -9, 0);
-        glScalef(10000,0.01,10000);
-        glutSolidCube(1);
+        glRotatef(90, 1,0,0);
+        glBindTexture(GL_TEXTURE_2D, name);
+        glBegin(GL_QUADS);
+            glNormal3f(0, 0, -1);
+
+            glTexCoord2f(-500, -500);
+            glVertex3f(0, 0, 0);
+
+            glTexCoord2f(500, -500);
+            glVertex3f(500, 0, 0);
+
+            glTexCoord2f(500, 500);
+            glVertex3f(500, 500, 0);
+
+            glTexCoord2f(-500, 500);
+            glVertex3f(0, 500, 0);
+        glEnd();
+        
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glScalef(1000,1000,0.01);
+        /*glutSolidCube(1);*/
     glPopMatrix();
 }
 
