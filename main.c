@@ -6,21 +6,25 @@
 #include <time.h>
 #include "image.h"
 
-#define GUSTINA 100
+#define GUSTINA 300
 #define M_PI acos(-1.0)
+
+#define FILENAME0 "grass.bmp"
+#define FILENAME1 "grass.bmp"
 
 void static on_display(void);
 void static on_keyboard(unsigned char key, int x, int y);
 void static on_reshape(int width, int height);
 
 
-static GLuint name;
+static GLuint names[2];
 static float x, z;
-static float X[100];
-static float Z[100];
+static float X[GUSTINA+1];
+static float Z[GUSTINA+1];
 
-static float xMeda = 1;
-static float yMeda = 1;
+
+static float xMeda = 300;
+static float yMeda = 300;
 static float xMedaPom = 1;
 static float yMedaPom = 1;
 
@@ -36,9 +40,11 @@ static void on_motion(int x, int y);
 static int window_width, window_height;
 static float pitch = 0, yaw = 0;
 
+static void initialize(void); 
+
 static time_t start;
 
-static float cameraPos[3]   = {0.0f, 0.0f,  3.0f};
+static float cameraPos[3]   = {-450.0f, 0.0f,  -450.0f};
 static float cameraFront[3] = {0.0f, 0.0f, -1.0f};
 static float cameraUp[3] = {0.0f, 1.0f,  0.0f};
 
@@ -55,8 +61,8 @@ void hundred(){
     
     int i = 0;
     for (i = 0; i < GUSTINA; i++){
-        x = rand() % (300 + 300 + 1) - 300;
-        z = rand() % (300 + 300 + 1) - 300;
+        x = rand() % (500 + 500 + 1) - 500;
+        z = rand() % (500 + 500 + 1) - 500;
         X[i] = x;
         Z[i] = z;
     }
@@ -95,11 +101,13 @@ int main(int argc, char** argv){
 
     image = image_init(0, 0);
 
-    image_read(image, "grass.bmp");
+    /* Kreira se prva tekstura. */
+    image_read(image, FILENAME0);
 
-    glGenTextures(1, &name);
+    /* Generisu se identifikatori tekstura. */
+    glGenTextures(2, names);
 
-    glBindTexture(GL_TEXTURE_2D, name);
+    glBindTexture(GL_TEXTURE_2D, names[0]);
     glTexParameteri(GL_TEXTURE_2D,
                     GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(GL_TEXTURE_2D,
@@ -111,6 +119,7 @@ int main(int argc, char** argv){
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
                  image->width, image->height, 0,
                  GL_RGB, GL_UNSIGNED_BYTE, image->pixels);
+
     
     glutInitWindowSize(800, 800);
     glutInitWindowPosition(100, 100);
@@ -139,9 +148,80 @@ int main(int argc, char** argv){
     
     hundred();
     
+    initialize();
+    
     glutMainLoop();
     
     return 0;
+}
+
+static void initialize(void)
+{
+    /* Objekat koji predstavlja teskturu ucitanu iz fajla. */
+    Image * image;
+
+    /* Postavlja se boja pozadine. */
+    glClearColor(0, 0, 0, 0);
+
+    /* Ukljucuje se testiranje z-koordinate piksela. */
+    glEnable(GL_DEPTH_TEST);
+
+    /* Ukljucuju se teksture. */
+    glEnable(GL_TEXTURE_2D);
+
+    glTexEnvf(GL_TEXTURE_ENV,
+              GL_TEXTURE_ENV_MODE,
+              GL_REPLACE);
+
+    /*
+     * Inicijalizuje se objekat koji ce sadrzati teksture ucitane iz
+     * fajla.
+     */
+    image = image_init(0, 0);
+
+    /* Kreira se prva tekstura. */
+    image_read(image, FILENAME0);
+
+    /* Generisu se identifikatori tekstura. */
+    glGenTextures(2, names);
+
+    glBindTexture(GL_TEXTURE_2D, names[0]);
+    glTexParameteri(GL_TEXTURE_2D,
+                    GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D,
+                    GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D,
+                    GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,
+                    GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
+                 image->width, image->height, 0,
+                 GL_RGB, GL_UNSIGNED_BYTE, image->pixels);
+
+    /* Kreira se druga tekstura. */
+    image_read(image, FILENAME1);
+
+    glBindTexture(GL_TEXTURE_2D, names[1]);
+    glTexParameteri(GL_TEXTURE_2D,
+                    GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D,
+                    GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
+                 image->width, image->height, 0,
+                 GL_RGB, GL_UNSIGNED_BYTE, image->pixels);
+
+    /* Iskljucujemo aktivnu teksturu */
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    /* Unistava se objekat za citanje tekstura iz fajla. */
+    image_done(image);
+
+    /* Inicijalizujemo matricu rotacije. */
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
 }
 
 
@@ -202,19 +282,19 @@ static void on_timer(int value)
     animation_parameter++;
     xMeda += xMedaPom;
     yMeda += yMedaPom;
-    if(xMeda >= 500 && yMeda >= 500){
+    if(xMeda >= 400 && yMeda >= 400){
         xMedaPom = -1;
         yMedaPom = -1;
     }
-    if(xMeda >= 500 && yMeda <= -500){
+    if(xMeda >= 400 && yMeda <= -400){
         xMedaPom = -1;
         yMedaPom = 1;
     }
-    if(xMeda <= -500 && yMeda >= 500){
+    if(xMeda <= -400 && yMeda >= 400){
         xMedaPom = 1;
         yMedaPom = -1;
     }
-    if(xMeda <= -500 && yMeda <= -500){
+    if(xMeda <= -400 && yMeda <= -400){
         xMedaPom = 1;
         yMedaPom = 1;
     }
@@ -318,8 +398,10 @@ void static on_display(void){
     
     
     
+    
+    
     glPushMatrix();
-        glTranslatef(xMeda*0.2 , 0, yMeda*0.2);
+        glTranslatef(xMeda , 0, yMeda);
         float angle = acos((-yMedaPom)/sqrt(xMedaPom*xMedaPom + yMedaPom*yMedaPom));
         if(xMedaPom < 0)
             glRotatef(angle*180/M_PI, 0, 1, 0);
@@ -434,31 +516,26 @@ void static ruka(){
     podlaktica();
 }
 void static trava(){
+    glBindTexture(GL_TEXTURE_2D, names[1]);
+    glBegin(GL_QUADS);
+        glNormal3f(0, 0, 1);
 
-    glPushMatrix();
-        glTranslatef(0, -9, 0);
-        glRotatef(90, 1,0,0);
-        glBindTexture(GL_TEXTURE_2D, name);
-        glBegin(GL_QUADS);
-            glNormal3f(0, 0, -1);
+        glTexCoord2f(0, 0);
+        glVertex3f(-500, -9, -500);
 
-            glTexCoord2f(-500, -500);
-            glVertex3f(0, 0, 0);
+        glTexCoord2f(200, 0);
+        glVertex3f(500, -9, -500);
 
-            glTexCoord2f(500, -500);
-            glVertex3f(500, 0, 0);
+        glTexCoord2f(200, 200);
+        glVertex3f(500, -9, 500);
 
-            glTexCoord2f(500, 500);
-            glVertex3f(500, 500, 0);
+        glTexCoord2f(0, 200);
+        glVertex3f(-500, -9, 500);
+    glEnd();
 
-            glTexCoord2f(-500, 500);
-            glVertex3f(0, 500, 0);
-        glEnd();
-        
-        glBindTexture(GL_TEXTURE_2D, 0);
-        glScalef(1000,1000,0.01);
-        /*glutSolidCube(1);*/
-    glPopMatrix();
+    /* Iskljucujemo aktivnu teksturu */
+    glBindTexture(GL_TEXTURE_2D, 0);
+
 }
 
 void static meda(){
@@ -495,7 +572,7 @@ void static meda(){
         glPushMatrix();
             glTranslatef(-0.06, -0.2, 0);
             glRotatef(
-            sin(animation_parameter / 10.0f) * 30.0f,
+            sin(animation_parameter*sqrt(xMedaPom*xMedaPom + yMedaPom*yMedaPom)) * 30.0f,
             1, 0, 0
             );
             glScalef(1, 2, 1);
@@ -504,7 +581,7 @@ void static meda(){
         glPushMatrix();
             glTranslatef(0.06, -0.2, 0);
             glRotatef(
-            -sin(animation_parameter / 10.0f) * 30.0f,
+            -sin(animation_parameter *sqrt(xMedaPom*xMedaPom + yMedaPom*yMedaPom)) * 30.0f,
             1, 0, 0
             );
             glScalef(1, 2, 1);
@@ -513,7 +590,7 @@ void static meda(){
         glPushMatrix();
                 glTranslatef(0.15, 0.11, 0);
                 glRotatef(
-                sin(animation_parameter/10.0f) * 30.0f,
+                sin(animation_parameter*sqrt(xMedaPom*xMedaPom + yMedaPom*yMedaPom)) * 30.0f,
                 1, 0, 0
                 );
                 glTranslatef(0, -0.1, 0);
@@ -524,7 +601,7 @@ void static meda(){
             glPushMatrix();
                 glTranslatef(-0.15, 0.11, 0);
                 glRotatef(
-                -sin(animation_parameter/10.0f) * 30.0f,
+                -sin(animation_parameter*sqrt(xMedaPom*xMedaPom + yMedaPom*yMedaPom)) * 30.0f,
                 1, 0, 0
                 );
                 glTranslatef(0, -0.1, 0);
