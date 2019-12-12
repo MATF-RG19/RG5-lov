@@ -5,6 +5,7 @@
 #include<math.h>
 #include <time.h>
 #include "image.h"
+#include "models.h"
 
 #define GUSTINA 300
 #define M_PI acos(-1.0)
@@ -15,6 +16,7 @@
 void static on_display(void);
 void static on_keyboard(unsigned char key, int x, int y);
 void static on_reshape(int width, int height);
+static void on_mouse(int button, int state, int x, int y);
 
 
 static GLuint names[2];
@@ -23,16 +25,19 @@ static float X[GUSTINA+1];
 static float Z[GUSTINA+1];
 
 
+static float xBulletPos = 0, yBulletPos = 0;
+static float xBulletMov, yBulletMov;
+static int fired = 0;
+static int canShoot = 1;
+
+
 static float xMeda = 300;
 static float yMeda = 300;
 static float xMedaPom = 1;
 static float yMedaPom = 1;
 
-void static trava();
-void static puc();
-void static ruka();
-void static meda();
-void static drvo();
+
+static GLint fogMode;
 float static pom[] = {0, 0};
 static float animation_parameter;
 static float matrix[16];
@@ -85,8 +90,6 @@ void generateMedaVec(){
 
 int main(int argc, char** argv){
     
-    Image * image;
-    
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
     
@@ -99,27 +102,7 @@ int main(int argc, char** argv){
               GL_TEXTURE_ENV_MODE,
               GL_REPLACE);
 
-    image = image_init(0, 0);
-
-    /* Kreira se prva tekstura. */
-    image_read(image, FILENAME0);
-
-    /* Generisu se identifikatori tekstura. */
-    glGenTextures(2, names);
-
-    glBindTexture(GL_TEXTURE_2D, names[0]);
-    glTexParameteri(GL_TEXTURE_2D,
-                    GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D,
-                    GL_TEXTURE_WRAP_T, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D,
-                    GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D,
-                    GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
-                 image->width, image->height, 0,
-                 GL_RGB, GL_UNSIGNED_BYTE, image->pixels);
-
+    
     
     glutInitWindowSize(800, 800);
     glutInitWindowPosition(100, 100);
@@ -135,6 +118,7 @@ int main(int argc, char** argv){
     glutSpecialFunc(SpecialInput);
     glutKeyboardFunc(on_keyboard);
     glutReshapeFunc(on_reshape);
+    glutMouseFunc(on_mouse);
     glutDisplayFunc(on_display);
     
     glEnable(GL_DEPTH_TEST);
@@ -160,11 +144,23 @@ static void initialize(void)
     /* Objekat koji predstavlja teskturu ucitanu iz fajla. */
     Image * image;
 
-    /* Postavlja se boja pozadine. */
-    glClearColor(0, 0, 0, 0);
 
     /* Ukljucuje se testiranje z-koordinate piksela. */
     glEnable(GL_DEPTH_TEST);
+
+    glEnable(GL_FOG);
+   {
+      GLfloat fogColor[4] = {0, 0, 0, 1.0};
+
+      fogMode = GL_EXP;
+      glFogi (GL_FOG_MODE, fogMode);
+      glFogfv (GL_FOG_COLOR, fogColor);
+      glFogf (GL_FOG_DENSITY, 0.01);
+      glHint (GL_FOG_HINT, GL_DONT_CARE);
+      glFogf (GL_FOG_START, 100.0);
+      glFogf (GL_FOG_END, 120.0);
+   }
+   glClearColor(0, 0, 0, 1.0); 
 
     /* Ukljucuju se teksture. */
     glEnable(GL_TEXTURE_2D);
@@ -225,7 +221,17 @@ static void initialize(void)
 }
 
 
-
+static void on_mouse(int button, int state, int x, int y){
+    if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN && canShoot == 1)
+    {
+        canShoot = 0;
+        fired = 1;
+        xBulletPos = cameraPos[0];
+        yBulletPos = cameraPos[2];
+        xBulletMov = cameraFront[0];
+        yBulletMov = cameraFront[2];
+    }
+}
 
 void static on_keyboard(unsigned char key, int x, int y){
     switch(key){
@@ -276,7 +282,11 @@ static void on_timer(int value)
 {
     if (value != 0)
         return;
-    
+
+    if(fired == 1){
+        xBulletPos = xBulletPos + xBulletMov;
+        yBulletPos = yBulletPos + yBulletMov;
+    }
     
 
     animation_parameter++;
@@ -324,7 +334,7 @@ static void on_reshape(int width, int height)
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(60, (float) width / height, 1, 1000);
+    gluPerspective(60, (float) width / height, 1, 200);
 }
 
 static void on_motion(int x, int y)
@@ -407,269 +417,19 @@ void static on_display(void){
             glRotatef(angle*180/M_PI, 0, 1, 0);
         else 
             glRotatef(360 - angle*180/M_PI, 0, 1, 0);
-        meda();
+        meda(animation_parameter, xMedaPom, yMedaPom);
     glPopMatrix();
+
+    if((xBulletPos > -500 && xBulletPos < 500 && yBulletPos < 500 && yBulletPos > -500) && fired == 1){
+        glPushMatrix();
+            glTranslatef(xBulletPos, 0, yBulletPos);
+            metak();
+        glPopMatrix();
+    }
+
     forest();
-    trava();
+    trava(names);
     glutSwapBuffers();
 }
 
-void drska(){
-    GLfloat ambient_coeffs[] = { 0.6, 0.6, 0.6, 1 };
 
-    GLfloat diffuse_coeffs[] = { 0.4, 0.4, 0.4, 1 };
-
-    GLfloat specular_coeffs[] = { 0.7, 0.7, 0.7, 1 };
-
-    GLfloat shininess = 1;
-    
-    glMaterialfv(GL_FRONT, GL_AMBIENT, ambient_coeffs);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse_coeffs);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
-    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
-
-    glPushMatrix();
-        glTranslatef(1, -2, -1);
-        glScalef(1, 3.5, 1);
-        glColor3f(1, 1, 1);
-        glutSolidCube(0.2);
-    glPopMatrix();
-}
-void cev(){
-    GLfloat ambient_coeffs[] = { 0.6, 0.6, 0.6, 1 };
-
-    GLfloat diffuse_coeffs[] = { 0.4, 0.4, 0.4, 1 };
-
-    GLfloat specular_coeffs[] = { 0.7, 0.7, 0.7, 1 };
-
-    GLfloat shininess = 1;
-    
-    glMaterialfv(GL_FRONT, GL_AMBIENT, ambient_coeffs);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse_coeffs);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
-    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
-
-    glPushMatrix();
-        glTranslatef(1, -1.6, -1);
-        glScalef(1.4, 1, 6);
-        glColor3f(1, 1, 1);
-        glutSolidCube(0.2);
-    glPopMatrix();
-    glPushMatrix();
-        glTranslatef(1, -1.5, -1);
-        glScalef(1.2, 1, 6);
-        glColor3f(1, 1, 1);
-        glutSolidCube(0.2);
-    glPopMatrix();
-}
-
-void static puc(){
-    drska();
-    cev();
-}
-
-void saka(){
-    GLfloat ambient_coeffs[] = { 1, 0.8, 0.6, 1 };
-
-    GLfloat diffuse_coeffs[] = { 0.4, 0.4, 0.4, 1 };
-
-    GLfloat specular_coeffs[] = { 0.8, 0.7, 0.7, 1 };
-
-    GLfloat shininess = 1;
-    
-    glMaterialfv(GL_FRONT, GL_AMBIENT, ambient_coeffs);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse_coeffs);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
-    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
-
-    glPushMatrix();
-        glTranslatef(1, -2, -0.8);
-        glColor3f(1, 1, 1);
-        glutSolidSphere(0.3, 40, 40);
-    glPopMatrix();
-}
-
-void podlaktica(){
-    GLfloat ambient_coeffs[] = { 0, 0, 0, 1 };
-
-    GLfloat diffuse_coeffs[] = { 0.4, 0.4, 0.4, 1 };
-
-    GLfloat specular_coeffs[] = { 0.6, 0.6, 0.6, 1 };
-
-    GLfloat shininess = 1;
-    
-    glMaterialfv(GL_FRONT, GL_AMBIENT, ambient_coeffs);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse_coeffs);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
-    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
-    glPushMatrix();
-        glTranslatef(1.2, -2.4, 0.6);
-        glRotatef(15, 1, 0.4, 0);
-        glScalef(1,1, -4.4);
-        glColor3f(1, 1, 1);
-        glutSolidCube(0.6);
-    glPopMatrix();
-}
-
-void static ruka(){
-    saka();
-    podlaktica();
-}
-void static trava(){
-    glBindTexture(GL_TEXTURE_2D, names[1]);
-    glBegin(GL_QUADS);
-        glNormal3f(0, 0, 1);
-
-        glTexCoord2f(0, 0);
-        glVertex3f(-500, -9, -500);
-
-        glTexCoord2f(200, 0);
-        glVertex3f(500, -9, -500);
-
-        glTexCoord2f(200, 200);
-        glVertex3f(500, -9, 500);
-
-        glTexCoord2f(0, 200);
-        glVertex3f(-500, -9, 500);
-    glEnd();
-
-    /* Iskljucujemo aktivnu teksturu */
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-}
-
-void static meda(){
-    GLfloat ambient_coeffs[] = { 0.6, 0.4, 0.4, 1 };
-
-    GLfloat diffuse_coeffs[] = { 0.4, 0.4, 0.4, 1 };
-
-    GLfloat specular_coeffs[] = { 0.8, 0.7, 0.7, 1 };
-
-    GLfloat shininess = 1;
-    
-    glMaterialfv(GL_FRONT, GL_AMBIENT, ambient_coeffs);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse_coeffs);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
-    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
-    glPushMatrix();
-        glScalef(30, 30, 30);
-        glPushMatrix();
-            glScalef(1, 1.3, 1);
-            glutSolidSphere(0.15, 20, 20);
-        glPopMatrix();
-        glPushMatrix();
-            glTranslatef(0, 0.25, 0);
-            glutSolidSphere(0.1, 20, 20);
-        glPopMatrix();
-        glPushMatrix();
-            glTranslatef(0.06, 0.34, 0);
-            glutSolidSphere(0.03, 20, 20);
-        glPopMatrix();
-        glPushMatrix();
-            glTranslatef(-0.06, 0.34, 0);
-            glutSolidSphere(0.03, 20, 20);
-        glPopMatrix();
-        glPushMatrix();
-            glTranslatef(-0.06, -0.2, 0);
-            glRotatef(
-            sin(animation_parameter*sqrt(xMedaPom*xMedaPom + yMedaPom*yMedaPom)) * 30.0f,
-            1, 0, 0
-            );
-            glScalef(1, 2, 1);
-            glutSolidSphere(0.05, 20, 20);
-        glPopMatrix();
-        glPushMatrix();
-            glTranslatef(0.06, -0.2, 0);
-            glRotatef(
-            -sin(animation_parameter *sqrt(xMedaPom*xMedaPom + yMedaPom*yMedaPom)) * 30.0f,
-            1, 0, 0
-            );
-            glScalef(1, 2, 1);
-            glutSolidSphere(0.05, 20, 20);
-        glPopMatrix();
-        glPushMatrix();
-                glTranslatef(0.15, 0.11, 0);
-                glRotatef(
-                sin(animation_parameter*sqrt(xMedaPom*xMedaPom + yMedaPom*yMedaPom)) * 30.0f,
-                1, 0, 0
-                );
-                glTranslatef(0, -0.1, 0);
-                glScalef(1, 2, 1);
-                glutSolidSphere(0.05, 20, 20);
-            glPopMatrix();
-            
-            glPushMatrix();
-                glTranslatef(-0.15, 0.11, 0);
-                glRotatef(
-                -sin(animation_parameter*sqrt(xMedaPom*xMedaPom + yMedaPom*yMedaPom)) * 30.0f,
-                1, 0, 0
-                );
-                glTranslatef(0, -0.1, 0);
-                glScalef(1, 2, 1);
-                glutSolidSphere(0.05, 20, 20);
-            glPopMatrix();
-    glPopMatrix();
-}
-
-
-void stablo(){
-    GLfloat ambient_coeffs[] = { 0.4, 0.2, 0.2, 1 };
-
-    GLfloat diffuse_coeffs[] = { 0.3, 0.1, 0.1, 1 };
-
-    GLfloat specular_coeffs[] = { 0.4, 0.2, 0.2, 1 };
-
-    GLfloat shininess = 1;
-    
-    glMaterialfv(GL_FRONT, GL_AMBIENT, ambient_coeffs);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse_coeffs);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
-    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
-    
-    glPushMatrix();
-        glTranslatef(0,-0.5,0);
-        glScalef(0.7,3,0.7);
-        glutSolidCube(0.3);
-    glPopMatrix();
-    
-}
-
-void krosnja(){
-    GLfloat ambient_coeffs[] = { 0, 0.4, 0, 1 };
-
-    GLfloat diffuse_coeffs[] = { 0, 0.4, 0, 1 };
-
-    GLfloat specular_coeffs[] = { 0, 0.7, 0, 1 };
-
-    GLfloat shininess = 1;
-    
-    glMaterialfv(GL_FRONT, GL_AMBIENT, ambient_coeffs);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse_coeffs);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
-    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
-    
-    glPushMatrix();
-        glTranslatef(0, 1.3, 0);
-        glScalef(0.5,2.5,0.5);
-        glutSolidSphere(0.5, 20, 20);
-    glPopMatrix();
-    glPushMatrix();
-        glTranslatef(0, 1.2, 0);
-        glScalef(0.6,1.4,0.6);
-        glutSolidSphere(0.6, 20, 20);
-    glPopMatrix();
-    glPushMatrix();
-        glTranslatef(0, 0.5, 0);
-        glScalef(0.7,1.5,0.7);
-        glutSolidSphere(0.6, 20, 20);
-    glPopMatrix();
-    
-}
-void static drvo(){
-    glPushMatrix();
-        glTranslatef(0,3, 0);
-        glScalef(15, 15, 15);
-        stablo();
-        krosnja();
-    glPopMatrix();
-}
