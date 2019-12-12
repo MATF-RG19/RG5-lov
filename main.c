@@ -224,10 +224,12 @@ static void initialize(void)
 static void on_mouse(int button, int state, int x, int y){
     if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN && canShoot == 1)
     {
+
+
         canShoot = 0;
         fired = 1;
-        xBulletPos = cameraPos[0];
-        yBulletPos = cameraPos[2];
+        xBulletPos = cameraPos[0] + cameraFront[0]*4 + pom[1];
+        yBulletPos = cameraPos[2] + cameraFront[2]*4 + pom[0];
         xBulletMov = cameraFront[0];
         yBulletMov = cameraFront[2];
     }

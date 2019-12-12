@@ -17,7 +17,6 @@ void drska(){
     glPushMatrix();
         glTranslatef(1, -2, -1);
         glScalef(1, 3.5, 1);
-        glColor3f(1, 1, 1);
         glutSolidCube(0.2);
     glPopMatrix();
 }
