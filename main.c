@@ -9,6 +9,8 @@
 
 #define GUSTINA 300
 #define M_PI acos(-1.0)
+#define BULLET_SPEED 4
+#define SPEED 0.8
 
 #define FILENAME0 "grass.bmp"
 #define FILENAME1 "grass.bmp"
@@ -18,6 +20,8 @@ void static on_keyboard(unsigned char key, int x, int y);
 void static on_reshape(int width, int height);
 static void on_mouse(int button, int state, int x, int y);
 
+static int shouldAnimGun = 0;
+static float gunMov = 0;
 
 static GLuint names[2];
 static float x, z;
@@ -121,10 +125,14 @@ int main(int argc, char** argv){
     glutMouseFunc(on_mouse);
     glutDisplayFunc(on_display);
     
+    if (!animation_active) {
+            glutTimerFunc(10, on_timer, 0);
+            animation_active = 1;
+        }
+    
     glEnable(GL_DEPTH_TEST);
     glutSetCursor(GLUT_CURSOR_NONE);
     
-    glClearColor(0.75, 0.75, 0.75, 0);
     
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -155,7 +163,7 @@ static void initialize(void)
       fogMode = GL_EXP;
       glFogi (GL_FOG_MODE, fogMode);
       glFogfv (GL_FOG_COLOR, fogColor);
-      glFogf (GL_FOG_DENSITY, 0.01);
+      glFogf (GL_FOG_DENSITY, 0.008);
       glHint (GL_FOG_HINT, GL_DONT_CARE);
       glFogf (GL_FOG_START, 100.0);
       glFogf (GL_FOG_END, 120.0);
@@ -221,32 +229,47 @@ static void initialize(void)
 }
 
 
+void gun_animation(){
+    shouldAnimGun = 1;
+    gunMov = 0;
+}
+
 static void on_mouse(int button, int state, int x, int y){
     if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN && canShoot == 1)
     {
-
-
+        gun_animation();
         canShoot = 0;
         fired = 1;
         xBulletPos = cameraPos[0] + cameraFront[0]*4 + pom[1];
         yBulletPos = cameraPos[2] + cameraFront[2]*4 + pom[0];
-        xBulletMov = cameraFront[0];
-        yBulletMov = cameraFront[2];
+        xBulletMov = cameraFront[0]*BULLET_SPEED;
+        yBulletMov = cameraFront[2]*BULLET_SPEED;
     }
 }
 
 void static on_keyboard(unsigned char key, int x, int y){
     switch(key){
         case 'q':
+        case 'Q':
+        case 27:
             exit(EXIT_SUCCESS);
             break;
-        case 'g':
-        case 'G':
-        if (!animation_active) {
-            glutTimerFunc(10, on_timer, 0);
-            animation_active = 1;
-        }
-        break;
+        case 'w':
+        case 'W':
+            SpecialInput(GLUT_KEY_UP, 0, 0);
+            break;
+        case 's':
+        case 'S':
+            SpecialInput(GLUT_KEY_DOWN, 0, 0);
+            break;
+        case 'a':
+        case 'A':
+            SpecialInput(GLUT_KEY_LEFT, 0, 0);
+            break;
+        case 'd':
+        case 'D':
+            SpecialInput(GLUT_KEY_RIGHT, 0, 0);
+            break;
     }
 }
 
@@ -259,20 +282,20 @@ void SpecialInput(int key, int x, int y)
     switch(key)
     {
         case GLUT_KEY_UP:
-            pom[0]+=0.5*normalized[1];
-            pom[1]+=0.5*normalized[0];
+            pom[0]+=SPEED*normalized[1];
+            pom[1]+=SPEED*normalized[0];
         break;
         case GLUT_KEY_DOWN:
-            pom[0]-=0.5*normalized[1];
-            pom[1]-=0.5*normalized[0];
+            pom[0]-=SPEED*normalized[1];
+            pom[1]-=SPEED*normalized[0];
         break;
         case GLUT_KEY_LEFT:
-            pom[0]-=0.5*normalized[0];
-            pom[1]+=0.5*normalized[1];
+            pom[0]-=SPEED*normalized[0];
+            pom[1]+=SPEED*normalized[1];
         break;
         case GLUT_KEY_RIGHT:
-            pom[0]+=0.5*normalized[0];
-            pom[1]-=0.5*normalized[1];
+            pom[0]+=SPEED*normalized[0];
+            pom[1]-=SPEED*normalized[1];
         break;
     }
 
@@ -291,32 +314,27 @@ static void on_timer(int value)
     }
     
 
+    if(shouldAnimGun == 1)
+        gunMov++;
+    
     animation_parameter++;
     xMeda += xMedaPom;
     yMeda += yMedaPom;
-    if(xMeda >= 400 && yMeda >= 400){
-        xMedaPom = -1;
-        yMedaPom = -1;
-    }
-    if(xMeda >= 400 && yMeda <= -400){
-        xMedaPom = -1;
-        yMedaPom = 1;
-    }
-    if(xMeda <= -400 && yMeda >= 400){
-        xMedaPom = 1;
-        yMedaPom = -1;
-    }
-    if(xMeda <= -400 && yMeda <= -400){
-        xMedaPom = 1;
-        yMedaPom = 1;
-    }
+    /*printf("xMeda: %g, yMeda: %g | xMedaPom: %g, yMedaPom: %g\n", xMeda, yMeda, xMedaPom, yMedaPom);*/
     time_t t1 = time(NULL);
     if(t1-start >= 10){
         start = t1;
         generateMedaVec();
     }
-    
-    
+    if(xMeda >= 300)
+        xMedaPom = -1;
+    if(xMeda <= -300)
+        xMedaPom = 1;
+    if(yMeda >= 300)
+        yMedaPom = -1;
+    if(yMeda <= -300)
+        yMedaPom = 1;
+
     glutPostRedisplay();
 
     if (animation_active)
@@ -405,7 +423,11 @@ void static on_display(void){
             glRotatef(360 - angl*180/M_PI, 0, 1, 0);
         glTranslatef(-1,0, -1);
         ruka();
-        puc();
+        if(gunMov >= M_PI){
+            shouldAnimGun = 0;
+            gunMov = 0;
+        }
+        puc(gunMov);
     glPopMatrix();
     
     

@@ -20,7 +20,7 @@ void drska(){
         glutSolidCube(0.2);
     glPopMatrix();
 }
-void cev(){
+void cev(float animation_parameter){
     GLfloat ambient_coeffs[] = { 0.6, 0.6, 0.6, 1 };
 
     GLfloat diffuse_coeffs[] = { 0.4, 0.4, 0.4, 1 };
@@ -33,11 +33,11 @@ void cev(){
     glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse_coeffs);
     glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
     glMaterialf(GL_FRONT, GL_SHININESS, shininess);
-
+    
     glPushMatrix();
         glTranslatef(1, -1.6, -1);
+        glTranslatef(0, 0, sin(animation_parameter)/2);
         glScalef(1.4, 1, 6);
-        glColor3f(1, 1, 1);
         glutSolidCube(0.2);
     glPopMatrix();
     glPushMatrix();
@@ -48,9 +48,9 @@ void cev(){
     glPopMatrix();
 }
 
-extern void puc(){
+extern void puc(float animation_parameter){
     drska();
-    cev();
+    cev(animation_parameter);
 }
 
 void saka(){
@@ -114,9 +114,10 @@ extern void metak(){
     glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse_coeffs);
     glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
     glMaterialf(GL_FRONT, GL_SHININESS, shininess);
-
-    glTranslatef(0,-1.5,0);
-    glutSolidSphere(0.1, 20, 20);
+    glPushMatrix();
+        glTranslatef(0,-1.5,0);
+        glutSolidSphere(0.1, 20, 20);
+    glPopMatrix();
 }
 
 extern void trava(GLuint names[]){
