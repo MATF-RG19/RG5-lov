@@ -36,12 +36,12 @@ void cev(float animation_parameter){
     
     glPushMatrix();
         glTranslatef(1, -1.6, -1);
-        glTranslatef(0, 0, sin(animation_parameter)/2);
         glScalef(1.4, 1, 6);
         glutSolidCube(0.2);
     glPopMatrix();
     glPushMatrix();
         glTranslatef(1, -1.5, -1);
+        glTranslatef(0, 0, sin(animation_parameter)/2);
         glScalef(1.2, 1, 6);
         glColor3f(1, 1, 1);
         glutSolidCube(0.2);

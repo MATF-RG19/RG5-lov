@@ -9,7 +9,6 @@
 #include <time.h>
 
 
-#define GUSTINA 300
 #define M_PI acos(-1.0)
 
 #define FILENAME0 "grass.bmp"
