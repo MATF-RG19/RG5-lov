@@ -9,7 +9,7 @@
 
 #define GUSTINA 300
 #define M_PI acos(-1.0)
-#define BULLET_SPEED 4
+#define BULLET_SPEED 5
 #define SPEED 0.8
 
 #define FILENAME0 "grass.bmp"
@@ -20,6 +20,15 @@ void static on_keyboard(unsigned char key, int x, int y);
 void static on_reshape(int width, int height);
 static void on_mouse(int button, int state, int x, int y);
 
+
+
+/*collision*/
+static float sumaCol [GUSTINA] [3];
+static float medaCol [3];
+static float covekCol [3];
+static float metakCol [3];
+static int is_colided(float xP1, float yP1, float rP1, float xP2, float yP2, float rP2);
+
 static int shouldAnimGun = 0;
 static float gunMov = 0;
 
@@ -29,7 +38,7 @@ static float X[GUSTINA+1];
 static float Z[GUSTINA+1];
 
 
-static float xBulletPos = 0, yBulletPos = 0;
+static float xBulletPos = -500, yBulletPos = -500;
 static float xBulletMov, yBulletMov;
 static int fired = 0;
 static int canShoot = 1;
@@ -74,6 +83,9 @@ void hundred(){
         z = rand() % (500 + 500 + 1) - 500;
         X[i] = x;
         Z[i] = z;
+        sumaCol[i][0] = x;
+        sumaCol[i][1] = z;
+        sumaCol[i][2] = 3;
     }
 }
 
@@ -108,6 +120,7 @@ int main(int argc, char** argv){
 
     
     
+    
     glutInitWindowSize(800, 800);
     glutInitWindowPosition(100, 100);
     glutCreateWindow(argv[0]);
@@ -139,6 +152,18 @@ int main(int argc, char** argv){
     glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
     
     hundred();
+    
+    medaCol[2] = 3;
+    medaCol[0] = xMeda;
+    medaCol[1] = yMeda;
+    
+    covekCol[2] = 2;
+    covekCol[0] = pom[0];
+    covekCol[1] = pom[1];
+    
+    metakCol[0] = xBulletPos;
+    metakCol[1] = yBulletPos;
+    metakCol[2] = 0.1;
     
     initialize();
     
@@ -308,7 +333,7 @@ static void on_timer(int value)
     if (value != 0)
         return;
 
-    if(fired == 1){
+    if((xBulletPos > -500 && xBulletPos < 500 && yBulletPos < 500 && yBulletPos > -500) && fired == 1){
         xBulletPos = xBulletPos + xBulletMov;
         yBulletPos = yBulletPos + yBulletMov;
     }
@@ -332,8 +357,50 @@ static void on_timer(int value)
         xMedaPom = 1;
     if(yMeda >= 300)
         yMedaPom = -1;
-    if(yMeda <= -300)
+    if(yMeda <= -300){
         yMedaPom = 1;
+    }
+
+	covekCol[0] = cameraPos[0] + cameraFront[0]+ pom[1];
+	covekCol[1] = cameraPos[2] + cameraFront[2]+ pom[0]; 
+	medaCol[0] = xMeda;
+	medaCol[1] = yMeda;
+	metakCol[0] = xBulletPos;
+	metakCol[1] = yBulletPos;
+
+	int i = 0;
+	
+	if(is_colided(medaCol[0], medaCol[1], medaCol[2], metakCol[0], metakCol[1], metakCol[2]) == 1){
+		exit(EXIT_SUCCESS);
+	}
+	
+	if(is_colided(medaCol[0], medaCol[1], medaCol[2], covekCol[0], covekCol[1], covekCol[2])){
+			float sum = sqrt(pow(medaCol[0] - covekCol[0],2) + pow(medaCol[1] - covekCol[1],2));
+			pom[1] -= ((medaCol[0] - covekCol[0]))/sum;
+			pom[0] -= ((medaCol[1] - covekCol[1]))/sum;
+	}
+	
+	for(i = 0; i < GUSTINA; i++){
+		if(is_colided(sumaCol[i][0], sumaCol[i][1], sumaCol[i][2], covekCol[0], covekCol[1], covekCol[2])){
+			float sum = sqrt(pow(sumaCol[i][0] - covekCol[0],2) + pow(sumaCol[i][1] - covekCol[1],2));
+			pom[1] -= ((sumaCol[i][0] - covekCol[0]))/sum;
+			pom[0] -= ((sumaCol[i][1] - covekCol[1]))/sum;
+		}
+	}
+	
+	for(i = 0; i < GUSTINA; i++){
+		if(is_colided(sumaCol[i][0], sumaCol[i][1], sumaCol[i][2], medaCol[0], medaCol[1], medaCol[2])){
+			generateMedaVec();
+		}
+	}
+	
+	for(i = 0; i < GUSTINA; i++){
+		if(is_colided(sumaCol[i][0], sumaCol[i][1], sumaCol[i][2], metakCol[0], metakCol[1], metakCol[2])){
+			xBulletPos = -1000;
+			yBulletPos = -1000;
+		}
+	}
+	
 
     glutPostRedisplay();
 
@@ -359,10 +426,13 @@ static void on_reshape(int width, int height)
 
 static void on_motion(int x, int y)
 {
+    
+    
     float xoffset = x - lastX;
     float yoffset = lastY - y; 
     lastX = x;
     lastY = y;
+
 
     float sensitivity = 0.3;
     xoffset *= sensitivity;
@@ -375,10 +445,12 @@ static void on_motion(int x, int y)
         pitch = 89.0f;
     if(pitch < -89.0f)
         pitch = -89.0f;
+        
 
     cameraFront[0] = cos(yaw*M_PI/180) * cos(pitch*M_PI/180);
     cameraFront[1] = sin(pitch*M_PI/180);
     cameraFront[2] = sin(yaw*M_PI/180) * cos(pitch*M_PI/180);
+    
     
     
     glutPostRedisplay();
@@ -457,3 +529,11 @@ void static on_display(void){
 }
 
 
+
+static int is_colided(float xP1, float yP1, float rP1, float xP2, float yP2, float rP2){
+	float r1r2 = sqrt(pow((xP1-xP2),2) + pow((yP1-yP2), 2));
+	if (r1r2 <= rP1 + rP2)
+		return 1;
+	else
+		return 0;
+}
