@@ -15,14 +15,19 @@
 #define FILENAME0 "grass.bmp"
 #define FILENAME1 "grass.bmp"
 
+
+time_t gameEnd;
 void static on_display(void);
 void static on_keyboard(unsigned char key, int x, int y);
 void static on_reshape(int width, int height);
 static void on_mouse(int button, int state, int x, int y);
 
+int dead = 0;
+int player_dead = 0;
+float tran = 0;
+int calc = 0;
 
-
-/*collision*/
+/*Parametri kolizije*/
 static float sumaCol [GUSTINA] [3];
 static float medaCol [3];
 static float covekCol [3];
@@ -121,7 +126,7 @@ int main(int argc, char** argv){
     
     
     
-    glutInitWindowSize(800, 800);
+    glutInitWindowSize(1600, 900);
     glutInitWindowPosition(100, 100);
     glutCreateWindow(argv[0]);
     
@@ -130,13 +135,14 @@ int main(int argc, char** argv){
     pom[0] = 0;
     pom[1] = 0;
     
-    
     glutPassiveMotionFunc(on_motion);
     glutSpecialFunc(SpecialInput);
     glutKeyboardFunc(on_keyboard);
     glutReshapeFunc(on_reshape);
     glutMouseFunc(on_mouse);
     glutDisplayFunc(on_display);
+    
+    glutFullScreen();
     
     if (!animation_active) {
             glutTimerFunc(10, on_timer, 0);
@@ -262,6 +268,7 @@ void gun_animation(){
 static void on_mouse(int button, int state, int x, int y){
     if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN && canShoot == 1)
     {
+		/*ispaljivanje metka*/
         gun_animation();
         canShoot = 0;
         fired = 1;
@@ -300,6 +307,10 @@ void static on_keyboard(unsigned char key, int x, int y){
 
 void SpecialInput(int key, int x, int y)
 {
+	if(dead == 1)
+		return;
+		
+	/*pravljenje vektora ravnomerngo kretanja u pravcu pogleda kamere*/
     float normalized[2];
     float sum = sqrt(cameraFront[0]* cameraFront[0] + cameraFront[2]*cameraFront[2]);
     normalized[0] = cameraFront[0]/sum;
@@ -332,52 +343,77 @@ static void on_timer(int value)
 {
     if (value != 0)
         return;
-
+	/*da li je metak na mapi i da li ga treba uopste racunati*/
     if((xBulletPos > -500 && xBulletPos < 500 && yBulletPos < 500 && yBulletPos > -500) && fired == 1){
         xBulletPos = xBulletPos + xBulletMov;
         yBulletPos = yBulletPos + yBulletMov;
     }
     
-
-    if(shouldAnimGun == 1)
-        gunMov++;
-    
-    animation_parameter++;
-    xMeda += xMedaPom;
-    yMeda += yMedaPom;
-    /*printf("xMeda: %g, yMeda: %g | xMedaPom: %g, yMedaPom: %g\n", xMeda, yMeda, xMedaPom, yMedaPom);*/
-    time_t t1 = time(NULL);
-    if(t1-start >= 10){
-        start = t1;
-        generateMedaVec();
-    }
-    if(xMeda >= 300)
-        xMedaPom = -1;
-    if(xMeda <= -300)
-        xMedaPom = 1;
-    if(yMeda >= 300)
-        yMedaPom = -1;
-    if(yMeda <= -300){
-        yMedaPom = 1;
-    }
-
-	covekCol[0] = cameraPos[0] + cameraFront[0]+ pom[1];
+    /*koordinate kolizija coveka medveda metka, drvece obradjeno u funkciji hundred*/
+    covekCol[0] = cameraPos[0] + cameraFront[0]+ pom[1];
 	covekCol[1] = cameraPos[2] + cameraFront[2]+ pom[0]; 
 	medaCol[0] = xMeda;
 	medaCol[1] = yMeda;
 	metakCol[0] = xBulletPos;
 	metakCol[1] = yBulletPos;
 
+	/*parametar animiranja pistolja prilikom pucanja*/
+    if(shouldAnimGun == 1)
+        gunMov++;
+    
+    
+    /*medved kad je ubijen*/
+    animation_parameter++;
+    if(dead!=1){
+		xMeda += xMedaPom;
+		yMeda += yMedaPom;
+    }
+    
+    float sum = sqrt(pow(medaCol[0] - covekCol[0],2) + pow(medaCol[1] - covekCol[1],2));
+	
+	float MedaCovekVec[] = {medaCol[0] - covekCol[0], medaCol[1] - covekCol[1]};
+    
+    float dist = sqrt(pow(MedaCovekVec[0], 2) + pow(MedaCovekVec[1], 2));
+    
+    /*kada je meda dovoljno blizu coveka uplasi se i krene da napada covek, vrlo brzo se krece medved jer je brzi nego sto mislite,
+     * inace ide svojim putem koji je generisan nasumicno
+     * Slicno ako covek opali u prazno, meda zna da je dosao sudnji dan i da mora da se bori za svoj zivot tako sto ce napasti coveka
+     * Meda ne zna da je coveku to bio poslednji metak i da je bez toga bezopasan*/
+    
+    if((dist < 70 || fired == 1) && player_dead != 1){
+		xMedaPom = -MedaCovekVec[0]*5/sum;
+		yMedaPom = -MedaCovekVec[1]*5/sum;
+	}else{
+		time_t t1 = time(NULL);
+		if(t1-start >= 10){
+			start = t1;
+			generateMedaVec();
+		}
+		if(xMeda >= 300)
+			xMedaPom = -1;
+		if(xMeda <= -300)
+			xMedaPom = 1;
+		if(yMeda >= 300)
+			yMedaPom = -1;
+		if(yMeda <= -300){
+			yMedaPom = 1;
+		}
+
+	}
+	
+
 	int i = 0;
 	
+	
+	/*provera kolizija i akcija sa njim*/
 	if(is_colided(medaCol[0], medaCol[1], medaCol[2], metakCol[0], metakCol[1], metakCol[2]) == 1){
-		exit(EXIT_SUCCESS);
+		dead = 1;
+		xBulletPos = -1000;
+		yBulletPos = -1000;
 	}
 	
 	if(is_colided(medaCol[0], medaCol[1], medaCol[2], covekCol[0], covekCol[1], covekCol[2])){
-			float sum = sqrt(pow(medaCol[0] - covekCol[0],2) + pow(medaCol[1] - covekCol[1],2));
-			pom[1] -= ((medaCol[0] - covekCol[0]))/sum;
-			pom[0] -= ((medaCol[1] - covekCol[1]))/sum;
+		player_dead = 1;
 	}
 	
 	for(i = 0; i < GUSTINA; i++){
@@ -410,7 +446,7 @@ static void on_timer(int value)
 
 static void on_reshape(int width, int height)
 {
-
+	/*reshape ko reshape*/
     window_width = width;
     window_height = height;
 
@@ -424,12 +460,14 @@ static void on_reshape(int width, int height)
     gluPerspective(60, (float) width / height, 1, 200);
 }
 
+
+
 static void on_motion(int x, int y)
-{
-    
-    
+{   
+	
+	/*pomeranje misa uzrokuje promene kamere i relativno poemranje strelicama u odnosu na pogled*/
     float xoffset = x - lastX;
-    float yoffset = lastY - y; 
+    float yoffset = y - lastY;
     lastX = x;
     lastY = y;
 
@@ -440,19 +478,25 @@ static void on_motion(int x, int y)
 
     yaw   += xoffset;
     pitch += yoffset;
+	
+    
+    if(xoffset!=0)
+    
 
     if(pitch > 89.0f)
         pitch = 89.0f;
-    if(pitch < -89.0f)
+    if(pitch < -89.0f){
         pitch = -89.0f;
+	}
         
 
     cameraFront[0] = cos(yaw*M_PI/180) * cos(pitch*M_PI/180);
-    cameraFront[1] = sin(pitch*M_PI/180);
+    cameraFront[1] = -sin(pitch*M_PI/180);
     cameraFront[2] = sin(yaw*M_PI/180) * cos(pitch*M_PI/180);
     
     
     
+
     glutPostRedisplay();
 }
 
@@ -468,9 +512,16 @@ void static on_display(void){
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     
+    /*tajmer koji ce ispratiti zavrsnicu i ugasiti igricu kada je zavrsnica gotova*/
+    if(calc == 0 && (dead == 1 || player_dead == 1)){
+		tran = animation_parameter;
+		calc = 1;
+		gameEnd = time(NULL);
+	}
     
-    
-    
+
+	if(time(NULL) - gameEnd == 23)
+		exit(EXIT_SUCCESS);
 
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
@@ -479,12 +530,22 @@ void static on_display(void){
     glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
     glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
 
-   
-    gluLookAt(cameraPos[0]+ pom[1], cameraPos[1], cameraPos[2]+ pom[0], cameraPos[0] + cameraFront[0]+ pom[1], cameraPos[1]  + cameraFront[1], cameraPos[2] + cameraFront[2]+ pom[0], cameraUp[0], cameraUp[1], cameraUp[2]);
+	/*parametar odlaska coveka na nebo (iako je hteo da ubije medveda, na kraju nije pa ipak moze otici u raj)*/
+	float uplift = player_dead == 1? animation_parameter - tran:0;
+    gluLookAt(cameraPos[0]+ pom[1], cameraPos[1] + uplift, cameraPos[2]+ pom[0], cameraPos[0] + cameraFront[0]+ pom[1], cameraPos[1]  + cameraFront[1], cameraPos[2] + cameraFront[2]+ pom[0], cameraUp[0], cameraUp[1], cameraUp[2]);
     
     float t1=1.5*cameraFront[0];
     float t2=1.5*cameraFront[2];
 
+	/*nestajanje cele mape prilikom kraja igre*/
+	 if(dead == 1 || player_dead == 1){
+		GLdouble plane0[] = {0, -1, 0, (-animation_parameter + tran)/3 + 100};
+		glClipPlane(GL_CLIP_PLANE0, plane0);
+		glEnable(GL_CLIP_PLANE0);
+	}
+
+	/*pomeranje pistolja i ruke zajedno sa kamerom
+	 * PUC _JE PISTOLJ!!!!!!!!!!!!!!!!!!!!*/
     glPushMatrix();
         glTranslatef(t1, 0, t2);
         glTranslatef(cameraPos[0] + cameraFront[0]+ pom[1], 0, cameraPos[2] + cameraFront[2]+ pom[0] );
@@ -494,28 +555,30 @@ void static on_display(void){
         else
             glRotatef(360 - angl*180/M_PI, 0, 1, 0);
         glTranslatef(-1,0, -1);
-        ruka();
+        if(player_dead==0)
+			ruka();
         if(gunMov >= M_PI){
             shouldAnimGun = 0;
             gunMov = 0;
         }
-        puc(gunMov);
+        if(player_dead==0)
+			puc(gunMov);
     glPopMatrix();
     
-    
-    
-    
-    
+   
+    /*Ludi meda koji lici na coveka, ali njemu je lepo*/
     glPushMatrix();
-        glTranslatef(xMeda , 0, yMeda);
-        float angle = acos((-yMedaPom)/sqrt(xMedaPom*xMedaPom + yMedaPom*yMedaPom));
-        if(xMedaPom < 0)
-            glRotatef(angle*180/M_PI, 0, 1, 0);
-        else 
-            glRotatef(360 - angle*180/M_PI, 0, 1, 0);
-        meda(animation_parameter, xMedaPom, yMedaPom);
+		glTranslatef(xMeda , 0, yMeda);
+		float angle = acos((-yMedaPom)/sqrt(xMedaPom*xMedaPom + yMedaPom*yMedaPom));
+		if(xMedaPom < 0)
+			glRotatef(angle*180/M_PI, 0, 1, 0);
+		else 
+			glRotatef(360 - angle*180/M_PI, 0, 1, 0);
+        meda(animation_parameter, xMedaPom, yMedaPom, dead);
     glPopMatrix();
 
+
+	/*metak koji zeli ozbiljno nekog da povredi*/
     if((xBulletPos > -500 && xBulletPos < 500 && yBulletPos < 500 && yBulletPos > -500) && fired == 1){
         glPushMatrix();
             glTranslatef(xBulletPos, 0, yBulletPos);
@@ -525,6 +588,7 @@ void static on_display(void){
 
     forest();
     trava(names);
+    
     glutSwapBuffers();
 }
 

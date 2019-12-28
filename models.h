@@ -19,7 +19,7 @@ extern void metak();
 extern void trava(GLuint names[]);
 extern void puc(float animation_parameter);
 extern void ruka();
-extern void meda(float animation_parameter, float xMedaPom, float yMedaPom);
+extern void meda(float animation_parameter, float xMedaPom, float yMedaPom, int dead);
 extern void drvo();
 
 

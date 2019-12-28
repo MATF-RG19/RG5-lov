@@ -1,5 +1,8 @@
 #include "models.h"
 
+int calculated = 0;
+float transition = 0;
+
 void drska(){
     GLfloat ambient_coeffs[] = { 0.6, 0.6, 0.6, 1 };
 
@@ -153,20 +156,47 @@ extern void trava(GLuint names[]){
 
 }
 
-extern void meda(float animation_parameter, float xMedaPom, float yMedaPom){
-    GLfloat ambient_coeffs[] = { 0.6, 0.4, 0.4, 1 };
+extern void meda(float animation_parameter, float xMedaPom, float yMedaPom, int dead){
+	if(dead == 0){
+		GLfloat ambient_coeffs[] = { 0.6, 0.4, 0.4, 1 };
 
-    GLfloat diffuse_coeffs[] = { 0.4, 0.4, 0.4, 1 };
+		GLfloat diffuse_coeffs[] = { 0.4, 0.4, 0.4, 1 };
 
-    GLfloat specular_coeffs[] = { 0.8, 0.7, 0.7, 1 };
+		GLfloat specular_coeffs[] = { 0.8, 0.7, 0.7, 1 };
 
-    GLfloat shininess = 1;
+		GLfloat shininess = 1;
+		
+		glMaterialfv(GL_FRONT, GL_AMBIENT, ambient_coeffs);
+		glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse_coeffs);
+		glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
+		glMaterialf(GL_FRONT, GL_SHININESS, shininess);
+	}else{
+		GLfloat ambient_coeffs[] = { 1, 1, 1, 1 };
+
+		GLfloat diffuse_coeffs[] = { 0.9, 0.9, 0.9, 1 };
+
+		GLfloat specular_coeffs[] = { 0.9, 0.9, 0.9, 1 };
+
+		GLfloat shininess = 1;
+		
+		glMaterialfv(GL_FRONT, GL_AMBIENT, ambient_coeffs);
+		glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse_coeffs);
+		glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
+		glMaterialf(GL_FRONT, GL_SHININESS, shininess);
+	}
     
-    glMaterialfv(GL_FRONT, GL_AMBIENT, ambient_coeffs);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse_coeffs);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
-    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
+    
+    
+    if(dead == 1 && calculated == 0){
+		calculated = 1;
+		transition= animation_parameter;
+	}
+    
     glPushMatrix();
+		if(dead){
+			glTranslatef(0, animation_parameter - transition, 0);
+			glRotatef(animation_parameter*100, 0, 1, 0);
+		}
         glScalef(30, 30, 30);
         glPushMatrix();
             glScalef(1, 1.3, 1);
