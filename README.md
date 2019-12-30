@@ -1,6 +1,6 @@
 # RG5-lov :bear:
 
-- Nalazite se u sumi. Jedan medved terorise vase selo. Vi ste taj covek. Vi morate zaustaviti medveda.
+- Nalazite se u sumi. Jedan medved terorise Vase selo. Vi ste taj covek. Vi morate zaustaviti medveda.
 - Imate 1 metak, 1 sansu da promenite sve. Imate 1 sansu da budete heroj ili da budete 1 od onih koji se nikada ni su vratili. Sve je na Vama. Mislite na Vasu porodicu i prijatelje.
 
 ## :video_game: Kontrole
