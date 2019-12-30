@@ -16,6 +16,9 @@
 #define FILENAME1 "grass.bmp"
 
 
+static float xMousePos;
+static float yMousePos;
+
 time_t gameEnd;
 void static on_display(void);
 void static on_keyboard(unsigned char key, int x, int y);
@@ -80,6 +83,8 @@ static int animation_active;
 
 static void on_timer(int value);
 
+
+/*generisanje sume pravljenjem drveca na nasumicnim lokacijama*/
 void hundred(){
     
     int i = 0;
@@ -94,6 +99,8 @@ void hundred(){
     }
 }
 
+/*iscrtavanje sume*/
+
 void forest(){
     int i =0;
     for(i = 0; i < GUSTINA; i++){
@@ -104,12 +111,15 @@ void forest(){
     }
 }
 
+/*genereisanje nasumicnom vektora medvedovog kretanja kroz sumu*/
 void generateMedaVec(){
     xMedaPom = (float)rand()/((float)RAND_MAX)*4 - 2;
     yMedaPom =  (float)rand()/((float)RAND_MAX)*4 - 2;
 }
 
 int main(int argc, char** argv){
+    
+    /*inicijalizacije i postavke*/
     
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
@@ -144,6 +154,8 @@ int main(int argc, char** argv){
     
     glutFullScreen();
     
+    /*pokretanje timera*/
+    
     if (!animation_active) {
             glutTimerFunc(10, on_timer, 0);
             animation_active = 1;
@@ -159,7 +171,7 @@ int main(int argc, char** argv){
     
     hundred();
     
-    medaCol[2] = 3;
+    medaCol[2] = 4;
     medaCol[0] = xMeda;
     medaCol[1] = yMeda;
     
@@ -259,12 +271,12 @@ static void initialize(void)
     glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
 }
 
-
+/*funkcija koja kaze da li je pucano iz pistolja i da li treba da se simulira ispaljivanje metka*/
 void gun_animation(){
     shouldAnimGun = 1;
     gunMov = 0;
 }
-
+/*levim klikom se ispaljuje metak*/
 static void on_mouse(int button, int state, int x, int y){
     if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN && canShoot == 1)
     {
@@ -304,10 +316,10 @@ void static on_keyboard(unsigned char key, int x, int y){
             break;
     }
 }
-
+/*specijalna funkcija za azuriranje pomeraja cak i prilikom drzanja tastera*/
 void SpecialInput(int key, int x, int y)
 {
-	if(dead == 1)
+	if(dead == 1 || player_dead == 1)
 		return;
 		
 	/*pravljenje vektora ravnomerngo kretanja u pravcu pogleda kamere*/
@@ -358,9 +370,13 @@ static void on_timer(int value)
 	metakCol[1] = yBulletPos;
 
 	/*parametar animiranja pistolja prilikom pucanja*/
-    if(shouldAnimGun == 1)
+    if(shouldAnimGun == 1){
         gunMov++;
-    
+	}
+    if(xMousePos > window_width - 4)
+		on_motion(xMousePos, yMousePos);
+	if(xMousePos < 4)
+		on_motion(xMousePos, yMousePos);
     
     /*medved kad je ubijen*/
     animation_parameter++;
@@ -406,16 +422,18 @@ static void on_timer(int value)
 	
 	
 	/*provera kolizija i akcija sa njim*/
+	
+	/*kolizija metka i medveda dovodi do kraja igrice gde je meda mrtav, a metak treba da nestane jer je u medvedu*/
 	if(is_colided(medaCol[0], medaCol[1], medaCol[2], metakCol[0], metakCol[1], metakCol[2]) == 1){
 		dead = 1;
 		xBulletPos = -1000;
 		yBulletPos = -1000;
 	}
-	
-	if(is_colided(medaCol[0], medaCol[1], medaCol[2], covekCol[0], covekCol[1], covekCol[2])){
+	/*ako se covek nadje oci u oci sa medvedom, meda je jaci i brzi, te je covek mrtav, isto tako ako covek izadje van sume, covek je izgubio*/
+	if(is_colided(medaCol[0], medaCol[1], medaCol[2], covekCol[0], covekCol[1], covekCol[2]) || covekCol[0] <= -500 || covekCol[1] <= -500 || covekCol[0] >= 550 || covekCol[1] >= 550){
 		player_dead = 1;
 	}
-	
+	/*covek kada udari u drvo ce se vratiti malo nazad*/
 	for(i = 0; i < GUSTINA; i++){
 		if(is_colided(sumaCol[i][0], sumaCol[i][1], sumaCol[i][2], covekCol[0], covekCol[1], covekCol[2])){
 			float sum = sqrt(pow(sumaCol[i][0] - covekCol[0],2) + pow(sumaCol[i][1] - covekCol[1],2));
@@ -424,12 +442,14 @@ static void on_timer(int value)
 		}
 	}
 	
+	/*kada medved udaru drvo, generisace se nasumican vektor opet, jer radi dovoljno dobro i na kraju ce se, u svakom slucaju okrenuti i otici od drveta*/
 	for(i = 0; i < GUSTINA; i++){
 		if(is_colided(sumaCol[i][0], sumaCol[i][1], sumaCol[i][2], medaCol[0], medaCol[1], medaCol[2])){
 			generateMedaVec();
 		}
 	}
 	
+	/*kada metak udari u drvo treba tu i da ostanje*/
 	for(i = 0; i < GUSTINA; i++){
 		if(is_colided(sumaCol[i][0], sumaCol[i][1], sumaCol[i][2], metakCol[0], metakCol[1], metakCol[2])){
 			xBulletPos = -1000;
@@ -464,17 +484,25 @@ static void on_reshape(int width, int height)
 
 static void on_motion(int x, int y)
 {   
-	
 	/*pomeranje misa uzrokuje promene kamere i relativno poemranje strelicama u odnosu na pogled*/
     float xoffset = x - lastX;
     float yoffset = y - lastY;
     lastX = x;
     lastY = y;
+	
+	xMousePos = x;
+	yMousePos = y;
 
-
-    float sensitivity = 0.3;
+	/*ako se mis zakuca u ivicu kamera nastavlja da se okrece*/
+	if(x > window_width-4){
+		xoffset += 7*(window_width-x + 1);
+	}
+	if(x < 4){
+		xoffset-= 7*(3-x);
+	}
+    float sensitivity = 0.8;
     xoffset *= sensitivity;
-    yoffset *= sensitivity;
+    yoffset *= sensitivity/2;
 
     yaw   += xoffset;
     pitch += yoffset;
@@ -488,15 +516,12 @@ static void on_motion(int x, int y)
     if(pitch < -89.0f){
         pitch = -89.0f;
 	}
-        
-
-    cameraFront[0] = cos(yaw*M_PI/180) * cos(pitch*M_PI/180);
+	
+	cameraFront[0] = cos(yaw*M_PI/180) * cos(pitch*M_PI/180);
     cameraFront[1] = -sin(pitch*M_PI/180);
     cameraFront[2] = sin(yaw*M_PI/180) * cos(pitch*M_PI/180);
+        
     
-    
-    
-
     glutPostRedisplay();
 }
 
@@ -567,6 +592,7 @@ void static on_display(void){
     
    
     /*Ludi meda koji lici na coveka, ali njemu je lepo*/
+    /*iscrtavanje medveda i njegovo pomeranje u zavisnosti od prethodno generisanih parametara*/
     glPushMatrix();
 		glTranslatef(xMeda , 0, yMeda);
 		float angle = acos((-yMedaPom)/sqrt(xMedaPom*xMedaPom + yMedaPom*yMedaPom));
@@ -579,13 +605,15 @@ void static on_display(void){
 
 
 	/*metak koji zeli ozbiljno nekog da povredi*/
+	/*iscrtavanje metka i njegovo pomeranje u zavisnosti od prethodno generisanih parametara*/
     if((xBulletPos > -500 && xBulletPos < 500 && yBulletPos < 500 && yBulletPos > -500) && fired == 1){
         glPushMatrix();
             glTranslatef(xBulletPos, 0, yBulletPos);
             metak();
         glPopMatrix();
     }
-
+	
+	/*crtanje sume i trave*/
     forest();
     trava(names);
     
@@ -593,7 +621,7 @@ void static on_display(void){
 }
 
 
-
+/*funkcija koja proverava da li su dva objekta sudarena*/
 static int is_colided(float xP1, float yP1, float rP1, float xP2, float yP2, float rP2){
 	float r1r2 = sqrt(pow((xP1-xP2),2) + pow((yP1-yP2), 2));
 	if (r1r2 <= rP1 + rP2)
